@@ -33,24 +33,57 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // If the application is in the foreground handle both data and notification messages here.
         // Also if you intend on generating your own notifications as a result of a received FCM
         // message, here is where that should be initiated. See sendNotification method below.
-        Log.d(TAG, "==> MyFirebaseMessagingService onMessageReceived");
-		
-		if( remoteMessage.getNotification() != null){
-			Log.d(TAG, "\tNotification Title: " + remoteMessage.getNotification().getTitle());
-			Log.d(TAG, "\tNotification Message: " + remoteMessage.getNotification().getBody());
-		}
-		
-		Map<String, Object> data = new HashMap<String, Object>();
-		data.put("wasTapped", false);
-		for (String key : remoteMessage.getData().keySet()) {
-                Object value = remoteMessage.getData().get(key);
-                Log.d(TAG, "\tKey: " + key + " Value: " + value);
-				data.put(key, value);
-        }
-		
-		Log.d(TAG, "\tNotification Data: " + data.toString());
-        FCMPlugin.sendPushPayload( data );
+        boolean isNeuraPush = NeuraPushCommandFactory.getInstance().isNeuraPush(getApplicationContext(), remoteMessage.getData(), new NeuraEventCallBack() {
+            @Override
+            public void neuraEventDetected(NeuraEvent event) {
+                String eventText = event != null ? event.toString() : "couldn't parse data";
+                Log.e(TAG, "received Neura event - " + eventText);
+                Map<String, Object> data = new HashMap<String, Object>();
+                data.put("wasTapped", false);
+
+                String notification_text = "";
+
+                if (event.getEventName().equals("userArrivedHome")) {
+                    notification_text = "Take a break, leave this device sleeping";
+                } else if (event.getEventName().equals("userArrivedToWork")){
+                    notification_text = "Don't forget to be active every hour even at work";
+                } else if (event.getEventName().equals("userFinishedRunning")){
+                    notification_text = "Congratulation for keeping your goals active";
+                } else if (event.getEventName().equals("userIsIdleAtHome")){     
+                    notification_text = "Get up and stretch a little bit";
+                } else if (event.getEventName().equals("userIsIdleFor1Hour")) {
+                    notification_text = "Came on! Let's start move!";
+                }
+
+                sendNotification(event.getEventName(), notification_text, data);
+            }
+        });
+
+        if(!isNeuraPush) {
+
+            Log.d(TAG, "==> MyFirebaseMessagingService onMessageReceived");
+    		
+    		if( remoteMessage.getNotification() != null){
+    			Log.d(TAG, "\tNotification Title: " + remoteMessage.getNotification().getTitle());
+    			Log.d(TAG, "\tNotification Message: " + remoteMessage.getNotification().getBody());
+    		}
+    		
+    		Map<String, Object> data = new HashMap<String, Object>();
+    		data.put("wasTapped", false);
+    		for (String key : remoteMessage.getData().keySet()) {
+                    Object value = remoteMessage.getData().get(key);
+                    Log.d(TAG, "\tKey: " + key + " Value: " + value);
+    				data.put(key, value);
+            }
+    		
+    		Log.d(TAG, "\tNotification Data: " + data.toString());
+            FCMPlugin.sendPushPayload( data );
         //sendNotification(remoteMessage.getNotification().getTitle(), remoteMessage.getNotification().getBody(), remoteMessage.getData());
+            sendNotification(remoteMessage.getNotification().getTitle(), remoteMessage.getNotification().getBody(), data);
+        
+        } else {
+            Log.e(TAG, "NEURA NOTIFICATION");
+        }
     }
     // [END receive_message]
 
